@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>测验 · 零基础英语</title>
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="logo" href="../index.html">
+      <span class="logo-badge">Aa</span>
+      <span>零基础英语<small>从字母到开口说</small></span>
+    </a>
+    <nav class="nav">
+      <a href="../index.html">首页</a>
+      <a href="lessons.html">课程</a>
+      <a href="letters.html">字母表</a>
+      <a href="phonetics.html">音标</a>
+      <a href="vocabulary.html">词汇</a>
+      <a href="grammar.html">语法</a>
+      <a href="flashcards.html">单词卡</a>
+      <a href="quiz.html">测验</a>
+      <a href="daily.html">每日一句</a>
+      <a href="progress.html">我的进度</a>
+    </nav>
+    <span class="streak-pill">🔥 连续学习 <span>0</span> 天</span>
+    <button class="speak-toggle">🔊 语音开</button>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page-head">
+    <h1>✍️ 小测验</h1>
+    <p>选一种模式开始，每次 10 题。答错的词会被记住，复习时优先出现。</p>
+  </div>
+
+  <div id="pickView">
+    <div class="grid grid-2" id="modeCards"></div>
+    <div class="card" style="margin-top:20px">
+      <h3 class="card-title">🏆 我的最好成绩</h3>
+      <div class="grid grid-4" id="bestBox"></div>
+      <p style="font-size:13px;color:var(--text-3);margin:14px 0 0">提示：做测验时可以用键盘 1–4 选择答案，回车进入下一题。</p>
+    </div>
+  </div>
+
+  <div id="quizView" style="display:none">
+    <div class="quiz-wrap">
+      <div class="quiz-progress-row">
+        <span id="qMode">测验</span>
+        <span id="qScore">答对 0 题</span>
+      </div>
+      <div class="progress" style="margin-bottom:16px"><i id="qBar"></i></div>
+      <div class="card">
+        <div id="qBody"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:16px">
+        <button class="btn ghost sm" id="quitBtn">← 退出测验</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">零基础英语学习站 · 学习进度保存在你的浏览器本地</footer>
+
+<script src="../data/vocab.js"></script>
+<script src="../data/alphabet.js"></script>
+<script src="../js/app.js"></script>
+<script>
+(function () {
+  const A = window.App;
+
+  const seenW = {};
+  const VOCAB = (window.VOCAB || []).filter(v => { if (seenW[v.w]) return false; seenW[v.w] = true; return true; });
+  const LETTERS = window.LETTERS || [];
+  const N = 10;
+
+  const MODES = [
+    { id: "en2cn", icon: "📖", name: "看英文选中文", desc: "给出英文单词，从 4 个中文意思里选正确的", color: "#e8ecff" },
+    { id: "cn2en", icon: "🔁", name: "看中文选英文", desc: "给出中文意思，选出对应的英文单词", color: "#e3f8ee" },
+    { id: "listen", icon: "🎧", name: "听音选词", desc: "听单词的发音，选出你听到的那个词", color: "#fff0e5" },
+    { id: "dictation", icon: "⌨️", name: "听写拼写", desc: "听发音，把单词拼写出来，考验真功夫", color: "#fde9eb" },
+    { id: "letter", icon: "🔤", name: "字母测验", desc: "听读音或看例词，选出对应的字母", color: "#f0eaff" }
+  ];
+
+  /* ---------- 模式选择页 ---------- */
+  document.getElementById("modeCards").innerHTML = MODES.map(m =>
+    '<div class="module-card mode-card" data-mode="' + m.id + '">' +
+      '<div class="module-icon" style="background:' + m.color + '">' + m.icon + '</div>' +
+      '<div><h3>' + m.name + '</h3><p>' + m.desc + '</p></div>' +
+      (m.id === "dictation" ? '<span class="badge orange mode-flag">挑战</span>' : '') +
+    '</div>'
+  ).join("") + '<a class="module-card mode-card" href="lessons.html"><div class="module-icon" style="background:#f5f7fc">📚</div><div><h3>回到课程</h3><p>想再复习一下，就去课程页看看</p></div></a>';
+
+  function renderBest() {
+    document.getElementById("bestBox").innerHTML = MODES.slice(0, 4).map(m => {
+      const best = A.state.quizBest[m.id];
+      return '<div class="stat" style="box-shadow:none"><div class="num" style="color:' + (best ? "var(--c-primary)" : "var(--text-3)") + '">' +
+        (best != null ? best + "%" : "—") + '</div><div class="lbl">' + m.name + '</div></div>';
+    }).join("");
+  }
+  renderBest();
+
+  /* ---------- 出题 ---------- */
+  function distractors(correctWord, key, n) {
+    const pool = A.shuffle(VOCAB.filter(v => v.w !== correctWord.w));
+    return pool.slice(0, n).map(v => v[key]);
+  }
+
+  function makeQuestions(mode) {
+    const qs = [];
+    if (mode === "letter") {
+      const picks = A.sample(LETTERS, N);
+      picks.forEach(L => {
+        const askBySound = Math.random() < 0.5;
+        const others = A.sample(LETTERS.filter(x => x.u !== L.u), 3);
+        const opts = A.shuffle([L].concat(others));
+        qs.push({
+          type: "choice",
+          question: askBySound ? "听读音，选出对应的字母" : '例词「' + L.word + '（' + L.cn + '）」以哪个字母开头？',
+          speakText: askBySound ? L.u : "",
+          options: opts.map(x => x.u + "  " + x.l),
+          answer: opts.findIndex(x => x.u === L.u),
+          explain: L.u + " — " + L.word + "（" + L.cn + "）"
+        });
+      });
+      return qs;
+    }
+
+    const picks = A.sample(VOCAB, N);
+    picks.forEach(v => {
+      if (mode === "en2cn") {
+        const opts = A.shuffle([v.m].concat(distractors(v, "m", 3)));
+        qs.push({ type: "choice", question: v.w, sub: v.ph, en: true, speakText: v.w, options: opts, answer: opts.indexOf(v.m), explain: v.w + " — " + v.m + "　" + v.e });
+      } else if (mode === "cn2en") {
+        const opts = A.shuffle([v.w].concat(distractors(v, "w", 3)));
+        qs.push({ type: "choice", question: v.m, sub: "选出对应的英文单词", options: opts, answer: opts.indexOf(v.w), explain: v.w + " " + v.ph + " — " + v.m });
+      } else if (mode === "listen") {
+        const opts = A.shuffle([v.w].concat(distractors(v, "w", 3)));
+        qs.push({ type: "choice", question: "🎧 听发音，选出你听到的单词", sub: "点击下方按钮可以重复播放", speakText: v.w, options: opts, answer: opts.indexOf(v.w), explain: v.w + " " + v.ph + " — " + v.m });
+      } else {
+        qs.push({ type: "dictation", question: "🎧 听发音，拼写这个单词", sub: "中文： " + v.m + "（" + v.p + "）", speakText: v.w, answer: v.w, explain: v.w + " " + v.ph + " — " + v.m });
+      }
+    });
+    if (mode === "dictation") {
+      // 听写题整体打乱，避免同批单词都有关联
+      return A.shuffle(qs);
+    }
+    return qs;
+  }
+
+  /* 根据题目反查单词（用于记录对错，供单词卡复习） */
+  function wordOfQuestion(q) {
+    if (q.type === "dictation") return q.answer;
+    if (q.speakText) return q.speakText;
+    if (q.en && VOCAB.some(v => v.w === q.question)) return q.question;
+    // 看中文选英文：从正确选项反查
+    if (q.options && q.answer >= 0) {
+      const opt = q.options[q.answer];
+      if (VOCAB.some(v => v.w === opt)) return opt;
+    }
+    return null;
+  }
+
+  /* ---------- 答题流程 ---------- */
+  let questions = [];
+  let curMode = "en2cn";
+  let qi = 0, score = 0, answered = false, wrongList = [];
+  const pickView = document.getElementById("pickView");
+  const quizView = document.getElementById("quizView");
+
+  document.getElementById("modeCards").addEventListener("click", e => {
+    const card = e.target.closest("[data-mode]");
+    if (!card) return;
+    curMode = card.dataset.mode;
+    startQuiz(makeQuestions(curMode));
+  });
+
+  function startQuiz(qs) {
+    questions = qs;
+    qi = 0; score = 0; wrongList = [];
+    pickView.style.display = "none";
+    quizView.style.display = "block";
+    const m = MODES.find(x => x.id === curMode);
+    document.getElementById("qMode").textContent = "测验模式：" + (m ? m.name : "");
+    renderQ();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // 调试/测试用只读钩子
+  window.__quizState = () => ({
+    mode: curMode, index: qi, score, total: questions.length,
+    current: questions[qi] ? { type: questions[qi].type, answer: questions[qi].answer } : null
+  });
+
+  function renderQ() {
+    answered = false;
+    const q = questions[qi];
+    document.getElementById("qScore").textContent = "答对 " + score + " 题";
+    document.getElementById("qBar").style.width = (qi / questions.length * 100) + "%";
+
+    const body = document.getElementById("qBody");
+    const speakBtn = q.speakText
+      ? '<button class="btn sm" id="playQ" style="margin-bottom:16px">🔊 播放读音</button>'
+      : "";
+
+    if (q.type === "choice") {
+      body.innerHTML = `
+        <div class="quiz-sub" style="margin-bottom:6px">第 ${qi + 1} / ${questions.length} 题${q.sub ? " · " + A.esc(q.sub) : ""}</div>
+        <div class="quiz-question${q.en ? " en" : ""}">${A.esc(q.question)}</div>
+        ${speakBtn}
+        <div class="options">
+          ${q.options.map((o, i) => `<button class="option" data-i="${i}"><span class="key">${i + 1}</span><span>${A.esc(o)}</span></button>`).join("")}
+        </div>
+        <div class="quiz-feedback" id="fb"></div>
+        <div class="quiz-footer"><button class="btn" id="nextQ" style="display:none">${qi === questions.length - 1 ? "查看结果" : "下一题 →"}</button></div>`;
+      body.querySelectorAll(".option").forEach(btn => {
+        btn.addEventListener("click", () => choose(parseInt(btn.dataset.i, 10)));
+      });
+    } else {
+      body.innerHTML = `
+        <div class="quiz-sub" style="margin-bottom:6px">第 ${qi + 1} / ${questions.length} 题 · ${A.esc(q.sub)}</div>
+        <div class="quiz-question">${A.esc(q.question)}</div>
+        ${speakBtn}
+        <input class="dictation-input" id="dictInput" type="text" placeholder="在这里输入单词…" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <div style="display:flex;gap:10px;margin-top:16px;justify-content:center;flex-wrap:wrap">
+          <button class="btn" id="submitDict">提交</button>
+          <button class="btn ghost" id="hintDict">💡 提示首字母</button>
+        </div>
+        <div class="quiz-feedback" id="fb"></div>
+        <div class="quiz-footer"><button class="btn" id="nextQ" style="display:none">${qi === questions.length - 1 ? "查看结果" : "下一题 →"}</button></div>`;
+      const input = document.getElementById("dictInput");
+      input.focus();
+      input.addEventListener("keydown", e => {
+        if (e.key === "Enter") {
+          if (!answered) submitDictation();
+          else document.getElementById("nextQ").click();
+        }
+      });
+      document.getElementById("submitDict").addEventListener("click", submitDictation);
+      document.getElementById("hintDict").addEventListener("click", () => {
+        input.value = q.answer[0];
+        input.focus();
+        A.toast("首字母是 " + q.answer[0].toUpperCase());
+      });
+    }
+
+    document.getElementById("nextQ").addEventListener("click", () => {
+      if (qi < questions.length - 1) { qi++; renderQ(); }
+      else finish();
+    });
+
+    const play = document.getElementById("playQ");
+    if (play) play.addEventListener("click", () => A.speak(q.speakText, { rate: 0.8 }));
+
+    // 自动播放听力题
+    if (q.speakText) setTimeout(() => A.speak(q.speakText, { rate: 0.8 }), 200);
+  }
+
+  function recordWord(isRight, word) {
+    if (!word) return;
+    const ws = A.wordState(word);
+    ws.seen = (ws.seen || 0) + 1;
+    ws.last = Date.now();
+    if (isRight) {
+      ws.right = (ws.right || 0) + 1;
+      if (ws.right >= 2 && ws.lv < 2 && (ws.wrong || 0) === 0) ws.lv = 2;
+      else if (ws.lv === 0) ws.lv = 1;
+    } else {
+      ws.wrong = (ws.wrong || 0) + 1;
+      ws.lv = 1;
+    }
+    A.save();
+  }
+
+  function choose(i) {
+    if (answered) return;
+    answered = true;
+    const q = questions[qi];
+    const ok = i === q.answer;
+    if (ok) score++;
+    document.querySelectorAll("#qBody .option").forEach((b, j) => {
+      b.disabled = true;
+      if (j === q.answer) b.classList.add("correct");
+      if (j === i && !ok) b.classList.add("wrong");
+    });
+    // 找到题目对应的单词，记录对错
+    const word = wordOfQuestion(q);
+    if (word) recordWord(ok, word);
+    if (!ok) wrongList.push(q.explain);
+
+    const fb = document.getElementById("fb");
+    fb.className = "quiz-feedback show " + (ok ? "ok" : "no");
+    fb.innerHTML = (ok ? "<b>✅ 答对了！</b>" : "<b>❌ 答错了。</b>") + " " + (q.explain ? A.esc(q.explain) : "");
+    A.markActivity(1);
+    document.getElementById("qScore").textContent = "答对 " + score + " 题";
+    document.getElementById("nextQ").style.display = "inline-flex";
+  }
+
+  function submitDictation() {
+    if (answered) return;
+    const q = questions[qi];
+    const input = document.getElementById("dictInput");
+    const val = input.value.trim().toLowerCase();
+    if (!val) { A.toast("先输入再提交哦"); return; }
+    answered = true;
+    const ok = val === q.answer.toLowerCase();
+    if (ok) score++;
+    input.classList.add(ok ? "ok" : "no");
+    input.disabled = true;
+    input.value = ok ? q.answer : q.answer + "（你写的：" + val + "）";
+    recordWord(ok, q.answer);
+    if (!ok) wrongList.push(q.explain);
+    const fb = document.getElementById("fb");
+    fb.className = "quiz-feedback show " + (ok ? "ok" : "no");
+    fb.innerHTML = (ok ? "<b>✅ 拼对了！</b> " : "<b>❌ 正确答案是 <span style=\"font-family:var(--font-en)\">" + A.esc(q.answer) + "</span></b> ") + A.esc(q.explain);
+    A.markActivity(1);
+    document.getElementById("qScore").textContent = "答对 " + score + " 题";
+    document.getElementById("submitDict").style.display = "none";
+    document.getElementById("hintDict").style.display = "none";
+    document.getElementById("nextQ").style.display = "inline-flex";
+    A.speak(q.answer);
+  }
+
+  function finish() {
+    const pct = Math.round(score / questions.length * 100);
+    const m = MODES.find(x => x.id === curMode);
+    if (m) {
+      const prev = A.state.quizBest[m.id];
+      if (prev == null || pct > prev) { A.state.quizBest[m.id] = pct; }
+      A.save();
+    }
+    const body = document.getElementById("qBody");
+    document.getElementById("qBar").style.width = "100%";
+    body.innerHTML = `
+      <div class="result-card" style="padding:20px 6px">
+        <div class="result-ring" style="--pct:${pct}%"><span>${pct}%</span></div>
+        <h2>${pct === 100 ? "满分！你就是英语小天才 🏆" : pct >= 80 ? "非常棒，继续保持！🌟" : pct >= 60 ? "不错的成绩，再接再厉 💪" : "别灰心，多复习几次就好了 📖"}</h2>
+        <p>答对 ${score} / ${questions.length} 题${m ? "　·　" + m.name : ""}</p>
+        ${wrongList.length ? '<div style="text-align:left;background:#fafbff;border-radius:12px;padding:14px 18px;margin-bottom:20px"><b style="font-size:14px">需要复习的内容：</b><ul style="margin:8px 0 0;padding-left:20px;color:var(--text-2);font-size:14px;line-height:1.9">' +
+          wrongList.map(x => "<li>" + A.esc(x) + "</li>").join("") + "</ul></div>" : ""}
+        <div class="result-actions">
+          <button class="btn" id="againQ">再测一次</button>
+          <button class="btn ghost" id="backQ">换个模式</button>
+          <a class="btn ghost" href="flashcards.html">去背单词卡</a>
+        </div>
+      </div>`;
+    document.getElementById("againQ").addEventListener("click", () => startQuiz(makeQuestions(curMode)));
+    document.getElementById("backQ").addEventListener("click", () => {
+      quizView.style.display = "none";
+      pickView.style.display = "block";
+      renderBest();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
+
+  document.getElementById("quitBtn").addEventListener("click", () => {
+    quizView.style.display = "none";
+    pickView.style.display = "block";
+    renderBest();
+  });
+
+  // 键盘 1-4 选择
+  document.addEventListener("keydown", e => {
+    if (quizView.style.display === "none" || answered) return;
+    if (["1", "2", "3", "4"].includes(e.key)) {
+      const btn = document.querySelector('#qBody .option[data-i="' + (parseInt(e.key, 10) - 1) + '"]');
+      if (btn) btn.click();
+    }
+    if (e.key === "Enter" && questions[qi] && questions[qi].type === "choice") {
+      const next = document.getElementById("nextQ");
+      if (next && next.style.display !== "none") next.click();
+    }
+  });
+})();
+</script>
+</body>
+</html>
