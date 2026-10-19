@@ -170,8 +170,8 @@
       '<b>' + (pos + 1) + '</b> / ' + deck.length +
       '　<span style="font-size:13px;color:var(--text-3)">✅ ' + stats.yes + '　❌ ' + stats.no + '</span>';
     document.getElementById("flashBar").style.width = (pos / deck.length * 100) + "%";
-    // 新卡自动朗读
-    setTimeout(() => A.speak(v.w), 120);
+    // 新卡自动朗读（只在真正开始背单词后朗读，页面初始化时不发声）
+    if (started) setTimeout(() => A.speak(v.w), 120);
   }
 
   function summary() {
