@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>词汇库 · 零基础英语</title>
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="logo" href="../index.html">
+      <span class="logo-badge">Aa</span>
+      <span>零基础英语<small>从字母到开口说</small></span>
+    </a>
+    <nav class="nav">
+      <a href="../index.html">首页</a>
+      <a href="lessons.html">课程</a>
+      <a href="letters.html">字母表</a>
+      <a href="phonetics.html">音标</a>
+      <a href="vocabulary.html">词汇</a>
+      <a href="grammar.html">语法</a>
+      <a href="flashcards.html">单词卡</a>
+      <a href="quiz.html">测验</a>
+      <a href="daily.html">每日一句</a>
+      <a href="progress.html">我的进度</a>
+    </nav>
+    <span class="streak-pill">🔥 连续学习 <span>0</span> 天</span>
+    <button class="speak-toggle">🔊 语音开</button>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page-head">
+    <h1>📖 词汇库</h1>
+    <p id="vocabSub">按分类浏览最常用的基础单词。点 🔊 听发音，点 ☆ 标记“已掌握”。</p>
+  </div>
+
+  <div class="toolbar" id="catBar"></div>
+  <div class="toolbar" style="margin-top:-4px">
+    <input class="search-input" id="searchInput" type="search" placeholder="🔍 搜索单词或中文意思…">
+    <span class="badge gray" id="countBadge">共 0 词</span>
+    <span style="flex:1"></span>
+    <a class="btn sm" href="flashcards.html">🃏 去背单词卡</a>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="table-wrap">
+      <table class="data word-table">
+        <thead>
+          <tr>
+            <th style="width:44px"></th>
+            <th>单词</th>
+            <th>音标</th>
+            <th>词性</th>
+            <th>意思</th>
+            <th>例句</th>
+            <th style="width:90px">朗读</th>
+          </tr>
+        </thead>
+        <tbody id="wordBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="empty" id="emptyBox" style="display:none">
+    <div class="ico">🔍</div>没有找到匹配的单词，换个关键词试试？
+  </div>
+</main>
+
+<footer class="footer">零基础英语学习站 · 学习进度保存在你的浏览器本地</footer>
+
+<script src="../data/vocab.js"></script>
+<script src="../js/app.js"></script>
+<script>
+(function () {
+  const A = window.App;
+  const all = window.VOCAB || [];
+
+  // 去重（防止数据里重复）
+  const seen = {};
+  const vocab = all.filter(v => {
+    if (seen[v.w]) return false;
+    seen[v.w] = true;
+    return true;
+  });
+
+  const cats = ["全部"].concat([...new Set(vocab.map(v => v.cat))]);
+  let curCat = "全部";
+  let keyword = "";
+
+  document.getElementById("catBar").innerHTML = cats.map(c =>
+    '<button class="chip' + (c === "全部" ? " active" : "") + '" data-cat="' + A.esc(c) + '">' + A.esc(c) + '</button>'
+  ).join("");
+
+  function lvIcon(lv) {
+    if (lv >= 2) return '<span title="已掌握" style="color:var(--c-yellow);font-size:19px">★</span>';
+    if (lv >= 1) return '<span title="学习中" style="color:var(--c-yellow);font-size:19px">☆</span>';
+    return '<span title="点击标记为已掌握" style="color:#cdd3e2;font-size:19px">☆</span>';
+  }
+
+  function render() {
+    const kw = keyword.trim().toLowerCase();
+    const rows = vocab.filter(v => {
+      if (curCat !== "全部" && v.cat !== curCat) return false;
+      if (!kw) return true;
+      return v.w.toLowerCase().includes(kw) || v.m.includes(kw) || (v.e && v.e.toLowerCase().includes(kw));
+    });
+
+    document.getElementById("countBadge").textContent = "共 " + rows.length + " 词";
+    document.getElementById("emptyBox").style.display = rows.length ? "none" : "block";
+
+    document.getElementById("wordBody").innerHTML = rows.map(v => {
+      const ws = A.state.words[v.w] || {};
+      return '<tr>' +
+        '<td><button class="star-btn" data-star="' + A.esc(v.w) + '" style="background:none;border:none;padding:0">' + lvIcon(ws.lv || 0) + '</button></td>' +
+        '<td><div class="w">' + A.esc(v.w) + '</div></td>' +
+        '<td><div class="ph">' + A.esc(v.ph) + '</div></td>' +
+        '<td><span class="pos">' + A.esc(v.p) + '</span></td>' +
+        '<td>' + A.esc(v.m) + '<div><span class="badge gray" style="margin-top:4px">' + A.esc(v.cat) + '</span></div></td>' +
+        '<td style="font-size:13.5px;color:var(--text-2)">' + A.esc(v.e) + '<br><span style="color:var(--text-3)">' + A.esc(v.ec) + '</span></td>' +
+        '<td><button class="btn ghost sm" data-say="' + A.esc(v.w) + '">🔊</button></td>' +
+      '</tr>';
+    }).join("");
+  }
+
+  // 分类切换
+  document.getElementById("catBar").addEventListener("click", e => {
+    const chip = e.target.closest(".chip");
+    if (!chip) return;
+    document.querySelectorAll("#catBar .chip").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    curCat = chip.dataset.cat;
+    render();
+  });
+
+  // 搜索
+  let timer = null;
+  document.getElementById("searchInput").addEventListener("input", e => {
+    clearTimeout(timer);
+    keyword = e.target.value;
+    timer = setTimeout(render, 120);
+  });
+
+  // 星标切换
+  document.getElementById("wordBody").addEventListener("click", e => {
+    const btn = e.target.closest("[data-star]");
+    if (!btn) return;
+    const w = btn.dataset.star;
+    const ws = A.wordState(w);
+    ws.lv = (ws.lv || 0) >= 2 ? 0 : (ws.lv || 0) + 1;
+    if (ws.lv === 2) A.markActivity(1);
+    A.save();
+    btn.innerHTML = lvIcon(ws.lv);
+    if (ws.lv === 2) A.toast("⭐ 已标记为「已掌握」");
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
