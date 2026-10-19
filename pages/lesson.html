@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>课程详情 · 零基础英语</title>
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="logo" href="../index.html">
+      <span class="logo-badge">Aa</span>
+      <span>零基础英语<small>从字母到开口说</small></span>
+    </a>
+    <nav class="nav">
+      <a href="../index.html">首页</a>
+      <a href="lessons.html">课程</a>
+      <a href="letters.html">字母表</a>
+      <a href="phonetics.html">音标</a>
+      <a href="vocabulary.html">词汇</a>
+      <a href="grammar.html">语法</a>
+      <a href="flashcards.html">单词卡</a>
+      <a href="quiz.html">测验</a>
+      <a href="daily.html">每日一句</a>
+      <a href="progress.html">我的进度</a>
+    </nav>
+    <span class="streak-pill">🔥 连续学习 <span>0</span> 天</span>
+    <button class="speak-toggle">🔊 语音开</button>
+  </div>
+</header>
+
+<main class="page" id="main">
+  <div class="breadcrumb"><a href="lessons.html">课程</a> / 课程详情</div>
+  <div id="content"></div>
+</main>
+
+<footer class="footer">零基础英语学习站 · 学习进度保存在你的浏览器本地</footer>
+
+<script src="../data/lessons.js"></script>
+<script src="../data/vocab.js"></script>
+<script src="../data/alphabet.js"></script>
+<script src="../js/app.js"></script>
+<script>
+(function () {
+  const A = window.App;
+  const list = window.LESSONS || [];
+
+  const params = new URLSearchParams(location.search);
+  const id = parseInt(params.get("id"), 10) || 1;
+  const idx = list.findIndex(l => l.id === id);
+  const lesson = list[idx];
+
+  if (!lesson) {
+    document.getElementById("content").innerHTML =
+      '<div class="empty"><div class="ico">🤔</div>没有找到这节课，<a href="lessons.html">返回课程列表</a></div>';
+    return;
+  }
+
+  document.title = "第 " + lesson.id + " 课 " + lesson.title + " · 零基础英语";
+
+  const st = A.state.lessons[lesson.id] || {};
+
+  /* ---------------- 渲染内容块 ---------------- */
+  function blockHtml(b) {
+    const wrap = (inner, title) =>
+      '<section class="card content-block">' +
+        (title ? '<h2><span class="dot"></span>' + A.esc(title) + '</h2>' : "") +
+        inner + '</section>';
+
+    if (b.type === "html") {
+      return wrap('<div style="font-size:15px">' + b.html + '</div>', b.title);
+    }
+    if (b.type === "table") {
+      const head = b.head.map(h => "<th>" + A.esc(h) + "</th>").join("");
+      const rows = b.rows.map(r =>
+        "<tr>" + r.map((c, i) =>
+          "<td" + (i === 0 && /[A-Za-z]/.test(c) && c.length < 30 ? ' class="en-cell"' : "") + ">" + c + "</td>"
+        ).join("") + "</tr>"
+      ).join("");
+      return wrap('<div class="table-wrap"><table class="data"><thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>', b.title);
+    }
+    if (b.type === "examples") {
+      const items = b.items.map(x =>
+        '<div class="example-box">' +
+          '<span class="en">' + A.esc(x.en) + '</span>' +
+          '<span class="cn">' + A.esc(x.cn) + '</span>' +
+          '<button class="btn ghost sm" data-say="' + A.esc(x.en) + '" style="margin-left:auto">🔊</button>' +
+        '</div>'
+      ).join("");
+      return wrap(items, b.title);
+    }
+    if (b.type === "chips") {
+      const chips = b.words.map(p => {
+        const en = Array.isArray(p) ? p[0] : p;
+        const cn = Array.isArray(p) ? p[1] : "";
+        return '<span class="word-chip" data-say="' + A.esc(en) + '" title="点击朗读">' +
+          A.esc(en) + (cn ? ' <span style="color:var(--text-3)">' + A.esc(cn) + '</span>' : "") + '</span>';
+      }).join("");
+      return wrap('<div style="display:flex;gap:9px;flex-wrap:wrap">' + chips + '</div>', b.title);
+    }
+    if (b.type === "tip") {
+      return '<div class="tip-box">' + b.html + '</div>';
+    }
+    return "";
+  }
+
+  const blocksHtml = (lesson.blocks || []).map(blockHtml).join("");
+
+  /* ---------------- 练习区 ---------------- */
+  const quiz = lesson.quiz || [];
+  const quizHtml = quiz.length ? `
+    <section class="card content-block" id="quizCard" style="margin-top:18px">
+      <h2><span class="dot"></span>课后练习</h2>
+      <p style="margin-bottom:16px">共 ${quiz.length} 题，选一选，看看学会了吗？</p>
+      <div id="quizArea"></div>
+    </section>` : "";
+
+  /* ---------------- 上一课 / 下一课 ---------------- */
+  const prev = list[idx - 1];
+  const next = list[idx + 1];
+  const navHtml = `
+    <div class="lesson-nav">
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        ${prev ? `<a class="btn ghost" href="lesson.html?id=${prev.id}">← 第 ${prev.id} 课</a>` : `<a class="btn ghost" href="lessons.html">← 课程列表</a>`}
+      </div>
+      <button class="btn green" id="doneBtn">${st.done ? "✓ 已学完（点击取消）" : "标记为已学完"}</button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        ${next ? `<a class="btn" href="lesson.html?id=${next.id}">第 ${next.id} 课 →</a>` : `<a class="btn" href="quiz.html">去测验 →</a>`}
+      </div>
+    </div>`;
+
+  document.getElementById("content").innerHTML = `
+    <div class="page-head" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div style="width:54px;height:54px;border-radius:16px;background:var(--c-primary-soft);color:var(--c-primary);
+                  display:grid;place-items:center;font-size:20px;font-weight:800;font-family:var(--font-en)">
+        ${st.done ? "✓" : lesson.id}
+      </div>
+      <div style="flex:1;min-width:200px">
+        <h1 style="margin-bottom:2px">第 ${lesson.id} 课 · ${A.esc(lesson.title)}</h1>
+        <p>${A.esc(lesson.subtitle)} · 约 ${lesson.minutes} 分钟</p>
+      </div>
+      ${st.done ? '<span class="badge green">✓ 已学完</span>' : '<span class="badge orange">进行中</span>'}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:18px">
+      ${blocksHtml}
+      ${quizHtml}
+    </div>
+    ${navHtml}
+  `;
+
+  /* ---------------- 练习交互 ---------------- */
+  if (quiz.length) {
+    let qi = 0, score = 0, answered = false;
+    const area = document.getElementById("quizArea");
+
+    function renderQ() {
+      answered = false;
+      const q = quiz[qi];
+      area.innerHTML = `
+        <div class="quiz-progress-row">
+          <span>第 ${qi + 1} / ${quiz.length} 题</span>
+          <span>答对 ${score} 题</span>
+        </div>
+        <div class="progress" style="margin-bottom:18px"><i style="width:${(qi / quiz.length) * 100}%"></i></div>
+        <div class="quiz-question">${A.esc(q.q)}</div>
+        ${q.sub ? `<div class="quiz-sub">${A.esc(q.sub)}</div>` : ""}
+        <div class="options">
+          ${q.options.map((o, i) =>
+            `<button class="option" data-i="${i}"><span class="key">${"ABCD"[i]}</span><span class="en-opt">${A.esc(o)}</span></button>`
+          ).join("")}
+        </div>
+        <div class="quiz-feedback" id="fb"></div>
+        <div class="quiz-footer"><button class="btn" id="nextQ" style="display:none">${qi === quiz.length - 1 ? "查看结果" : "下一题 →"}</button></div>
+      `;
+
+      area.querySelectorAll(".option").forEach(btn => {
+        btn.addEventListener("click", () => {
+          if (answered) return;
+          answered = true;
+          const pick = parseInt(btn.dataset.i, 10);
+          const ok = pick === q.answer;
+          if (ok) score++;
+          area.querySelectorAll(".option").forEach((b, i) => {
+            b.disabled = true;
+            if (i === q.answer) b.classList.add("correct");
+            if (i === pick && !ok) b.classList.add("wrong");
+          });
+          const fb = document.getElementById("fb");
+          fb.className = "quiz-feedback show " + (ok ? "ok" : "no");
+          fb.innerHTML = (ok ? "<b>✅ 答对了！</b> " : "<b>❌ 答错了。</b> 正确答案是 " + "ABCD"[q.answer] + "。 ") + A.esc(q.explain || "");
+          document.getElementById("nextQ").style.display = "inline-flex";
+        });
+      });
+
+      document.getElementById("nextQ").addEventListener("click", () => {
+        if (qi < quiz.length - 1) {
+          qi++;
+          renderQ();
+        } else {
+          finishQuiz();
+        }
+      });
+    }
+
+    function finishQuiz() {
+      const pct = Math.round(score / quiz.length * 100);
+      const s = A.state.lessons[lesson.id] || (A.state.lessons[lesson.id] = {});
+      if (!s.quizTotal || score > s.quizScore) s.quizScore = score;
+      s.quizTotal = quiz.length;
+      A.save();
+      A.markActivity(1);
+
+      area.innerHTML = `
+        <div class="result-card">
+          <div class="result-ring" style="--pct:${pct}%"><span>${pct}%</span></div>
+          <h2>${pct === 100 ? "全对！太棒了 🎉" : pct >= 60 ? "不错，继续加油 💪" : "再复习一下这一课吧 📖"}</h2>
+          <p>本课练习答对 ${score} / ${quiz.length} 题</p>
+          <div class="result-actions">
+            <button class="btn ghost" id="retryQ">再练一次</button>
+            ${next ? `<a class="btn" href="lesson.html?id=${next.id}">学习第 ${next.id} 课 →</a>` : `<a class="btn" href="quiz.html">去测验 →</a>`}
+          </div>
+        </div>`;
+      document.getElementById("retryQ").addEventListener("click", () => {
+        qi = 0; score = 0; renderQ();
+      });
+    }
+
+    renderQ();
+  }
+
+  /* ---------------- 标记完成 ---------------- */
+  const doneBtn = document.getElementById("doneBtn");
+  doneBtn.addEventListener("click", () => {
+    const s = A.state.lessons[lesson.id] || (A.state.lessons[lesson.id] = {});
+    s.done = !s.done;
+    s.ts = Date.now();
+    A.save();
+    if (s.done) {
+      A.markActivity(1);
+      A.toast("已标记完成，下一课已解锁 🎉");
+    } else {
+      A.toast("已取消完成标记");
+    }
+    location.reload();
+  });
+})();
+</script>
+</body>
+</html>
