@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>零基础英语 · 从字母到开口说</title>
+<meta name="description" content="为零基础学习者打造的英语自学网站：字母、音标、词汇、语法、单词卡、发音朗读、小测验和每日一句。">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="logo" href="index.html">
+      <span class="logo-badge">Aa</span>
+      <span>零基础英语<small>从字母到开口说</small></span>
+    </a>
+    <nav class="nav">
+      <a href="index.html">首页</a>
+      <a href="pages/lessons.html">课程</a>
+      <a href="pages/letters.html">字母表</a>
+      <a href="pages/phonetics.html">音标</a>
+      <a href="pages/vocabulary.html">词汇</a>
+      <a href="pages/grammar.html">语法</a>
+      <a href="pages/flashcards.html">单词卡</a>
+      <a href="pages/quiz.html">测验</a>
+      <a href="pages/daily.html">每日一句</a>
+      <a href="pages/progress.html">我的进度</a>
+    </nav>
+    <span class="streak-pill">🔥 连续学习 <span>0</span> 天</span>
+    <button class="speak-toggle">🔊 语音开</button>
+  </div>
+</header>
+
+<main class="page">
+
+  <!-- Hero -->
+  <section class="hero">
+    <h1>今天就从 Hello 开始</h1>
+    <p>专为完全零基础设计的英语自学网站：字母、音标、词汇、语法，配合单词卡、发音朗读和小测验，每天 20 分钟，一步一步开口说。</p>
+    <div class="hero-actions">
+      <a class="btn" href="pages/lessons.html" id="startBtn">▶ 开始第 1 课</a>
+      <a class="btn ghost" href="pages/flashcards.html">🃏 背单词卡</a>
+      <a class="btn ghost" href="pages/daily.html">💬 今日一句</a>
+    </div>
+    <div class="hero-word">
+      <span class="big" data-say="Hello! Welcome!" title="点击朗读">Hello!</span>
+      <div class="ph">/həˈləʊ/</div>
+      <div class="cn">你好哇 👋</div>
+    </div>
+  </section>
+
+  <!-- 数据概览 -->
+  <section class="stat-row" style="margin-bottom:26px">
+    <div class="stat">
+      <div class="num" id="stLesson" style="color:var(--c-primary)">0%</div>
+      <div class="lbl">课程完成度</div>
+      <div class="progress" style="margin-top:10px"><i id="barLesson"></i></div>
+    </div>
+    <div class="stat">
+      <div class="num" id="stWord" style="color:var(--c-green)">0 / 0</div>
+      <div class="lbl">已掌握单词</div>
+      <div class="progress green" style="margin-top:10px"><i id="barWord"></i></div>
+    </div>
+    <div class="stat">
+      <div class="num" id="stLetter" style="color:var(--c-accent)">0%</div>
+      <div class="lbl">字母跟读完成度</div>
+      <div class="progress orange" style="margin-top:10px"><i id="barLetter"></i></div>
+    </div>
+    <div class="stat">
+      <div class="num" id="stDays" style="color:var(--c-purple)">0</div>
+      <div class="lbl">累计学习天数</div>
+      <div style="font-size:12.5px;color:var(--text-3);margin-top:12px">坚持就是最大的天赋</div>
+    </div>
+  </section>
+
+  <!-- 推荐下一步 -->
+  <section class="card" style="margin-bottom:26px;display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+    <div style="font-size:34px">📌</div>
+    <div style="flex:1;min-width:220px">
+      <div style="font-weight:700;font-size:16px;margin-bottom:2px">推荐下一步</div>
+      <div id="nextTip" style="color:var(--text-2);font-size:14.5px">正在计算你的学习进度…</div>
+    </div>
+    <a class="btn" id="nextBtn" href="pages/lessons.html">去学习 →</a>
+  </section>
+
+  <!-- 模块 -->
+  <h2 style="font-size:19px;margin:0 0 14px">学习模块</h2>
+  <div class="grid grid-4" style="margin-bottom:26px">
+    <a class="module-card" href="pages/lessons.html">
+      <div class="module-icon" style="background:#e8ecff">📚</div>
+      <h3>分步课程</h3>
+      <p>12 节零基础课程，从字母、音标一路学到开口对话</p>
+      <span class="go">→</span>
+    </a>
+    <a class="module-card" href="pages/letters.html">
+      <div class="module-icon" style="background:#fff0e5">🔤</div>
+      <h3>字母表</h3>
+      <p>26 个字母点击发音，带例词，跟读记牢每个字母</p>
+      <span class="go">→</span>
+    </a>
+    <a class="module-card" href="pages/phonetics.html">
+      <div class="module-icon" style="background:#f0eaff">🎧</div>
+      <h3>音标</h3>
+      <p>48 个国际音标，清浊辅音对照，附发音例词</p>
+      <span class="go">→</span>
+    </a>
+    <a class="module-card" href="pages/vocabulary.html">
+      <div class="module-icon" style="background:#e3f8ee">📖</div>
+      <h3>词汇库</h3>
+      <p>200+ 个最常用基础单词，带音标、例句和朗读</p>
+      <span class="go">→</span>
+    </a>
+    <a class="module-card" href="pages/grammar.html">
+      <div class="module-icon" style="background:#fff6d6">🧩</div>
+      <h3>基础语法</h3>
+      <p>be 动词、have/has、一般现在时……讲透最核心的 5 个点</p>
+      <span class="go">→</span>
+    </a>
+    <a class="module-card" href="pages/flashcards.html">
+      <div class="module-icon" style="background:#fde9eb">🃏</div>
+      <h3>单词卡</h3>
+      <p>翻卡记忆，标记“认识 / 不认识”，自动安排复习</p>
+      <span class="go">→</span>
+    </a>
+    <a class="module-card" href="pages/quiz.html">
+      <div class="module-icon" style="background:#e8ecff">✍️</div>
+      <h3>测验</h3>
+      <p>选择题、听音辨词、听写拼写，检验学习成果</p>
+      <span class="go">→</span>
+    </a>
+    <a class="module-card" href="pages/daily.html">
+      <div class="module-icon" style="background:#fff0e5">💬</div>
+      <h3>每日一句</h3>
+      <p>每天一句实用英语，配中文解释和跟读朗读</p>
+      <span class="go">→</span>
+    </a>
+  </div>
+
+  <!-- 今日一句 -->
+  <section class="card">
+    <h3 class="card-title">☀️ 今天学一句</h3>
+    <div id="dailyPreview"></div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  零基础英语学习站 · 学习进度保存在你的浏览器本地，不会上传到任何服务器<br>
+  <span style="opacity:.7">建议使用 Chrome / Edge 浏览器，以获得最佳语音朗读效果</span>
+</footer>
+
+<script src="data/lessons.js"></script>
+<script src="data/quotes.js"></script>
+<script src="data/vocab.js"></script>
+<script src="data/alphabet.js"></script>
+<script src="data/grammar.js"></script>
+<script src="js/app.js"></script>
+<script>
+(function () {
+  const A = window.App;
+
+  // ---- 概览数字 ----
+  const lp = A.lessonProgress();
+  const wp = A.wordProgress();
+  const letp = A.letterProgress();
+
+  document.getElementById("stLesson").textContent = lp.pct + "%";
+  document.getElementById("barLesson").style.width = lp.pct + "%";
+  document.getElementById("stWord").textContent = wp.mastered + " / " + wp.total;
+  document.getElementById("barWord").style.width = wp.pct + "%";
+  document.getElementById("stLetter").textContent = letp.pct + "%";
+  document.getElementById("barLetter").style.width = letp.pct + "%";
+  document.getElementById("stDays").textContent = A.state.streak.totalDays || 0;
+
+  // ---- 开始按钮：跳到第一个未完成课程 ----
+  const firstUndone = (window.LESSONS || []).find(l => !(A.state.lessons[l.id] && A.state.lessons[l.id].done));
+  if (firstUndone && lp.pct > 0) {
+    document.getElementById("startBtn").textContent = "▶ 继续第 " + firstUndone.id + " 课";
+    document.getElementById("startBtn").href = "pages/lesson.html?id=" + firstUndone.id;
+  } else if (firstUndone) {
+    document.getElementById("startBtn").href = "pages/lesson.html?id=" + firstUndone.id;
+  } else if (lp.total > 0) {
+    document.getElementById("startBtn").textContent = "🎉 全部课程已完成";
+    document.getElementById("startBtn").href = "pages/quiz.html";
+  }
+
+  // ---- 推荐下一步 ----
+  let tip = "", href = "pages/lessons.html", btnText = "去学习 →";
+  if (letp.pct < 100 && lp.done === 0) {
+    tip = "先花 3 分钟去「字母表」点一点 26 个字母，听听它们的读音吧。";
+    href = "pages/letters.html"; btnText = "读字母 →";
+  } else if (lp.done < lp.total) {
+    tip = "你已学完 " + lp.done + " / " + lp.total + " 节课，接下来学习第 " + firstUndone.id + " 课「" + firstUndone.title + "」。";
+    href = "pages/lesson.html?id=" + firstUndone.id; btnText = "继续学习 →";
+  } else if (wp.mastered < wp.total) {
+    tip = "课程都学完了！现在用「单词卡」逐个巩固单词，已掌握 " + wp.mastered + " / " + wp.total + " 个。";
+    href = "pages/flashcards.html"; btnText = "背单词 →";
+  } else {
+    tip = "太厉害了，所有单词都掌握了！用「测验」保持手感，试试听写挑战吧。";
+    href = "pages/quiz.html"; btnText = "去测验 →";
+  }
+  document.getElementById("nextTip").textContent = tip;
+  document.getElementById("nextBtn").href = href;
+  document.getElementById("nextBtn").textContent = btnText;
+
+  // ---- 今日一句预览 ----
+  const quotes = window.QUOTES || [];
+  const q = quotes[A.dayIndex() % quotes.length] || quotes[0];
+  if (q) {
+    document.getElementById("dailyPreview").innerHTML =
+      '<div class="example-box" style="margin:0">' +
+        '<span class="en">' + A.esc(q.en) + '</span>' +
+        '<span class="cn">' + A.esc(q.cn) + '</span>' +
+        '<button class="btn ghost sm" data-say="' + A.esc(q.en) + '">🔊 朗读</button>' +
+        '<a class="btn sm" href="pages/daily.html" style="margin-left:auto">查看详情 →</a>' +
+      '</div>';
+  }
+})();
+</script>
+</body>
+</html>
