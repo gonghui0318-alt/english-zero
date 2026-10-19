@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>每日一句 · 零基础英语</title>
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="logo" href="../index.html">
+      <span class="logo-badge">Aa</span>
+      <span>零基础英语<small>从字母到开口说</small></span>
+    </a>
+    <nav class="nav">
+      <a href="../index.html">首页</a>
+      <a href="lessons.html">课程</a>
+      <a href="letters.html">字母表</a>
+      <a href="phonetics.html">音标</a>
+      <a href="vocabulary.html">词汇</a>
+      <a href="grammar.html">语法</a>
+      <a href="flashcards.html">单词卡</a>
+      <a href="quiz.html">测验</a>
+      <a href="daily.html">每日一句</a>
+      <a href="progress.html">我的进度</a>
+    </nav>
+    <span class="streak-pill">🔥 连续学习 <span>0</span> 天</span>
+    <button class="speak-toggle">🔊 语音开</button>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page-head">
+    <h1>💬 每日一句</h1>
+    <p>每天一句实用英语。先听、再跟读、最后看解释——坚持 30 天，你会发现自己敢开口了。</p>
+  </div>
+
+  <div id="quoteBox" style="margin-bottom:26px"></div>
+
+  <div class="grid grid-3" style="margin-bottom:26px">
+    <div class="card">
+      <div class="stat" style="border:none;box-shadow:none;padding:0">
+        <div class="num" id="readDays" style="color:var(--c-primary)">0</div>
+        <div class="lbl">已跟读天数</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="stat" style="border:none;box-shadow:none;padding:0">
+        <div class="num" id="totalQuotes" style="color:var(--c-green)">0</div>
+        <div class="lbl">句子总数</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="stat" style="border:none;box-shadow:none;padding:0">
+        <div class="num" id="streakDays" style="color:var(--c-accent)">0</div>
+        <div class="lbl">连续学习天数</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 class="card-title">📜 句子合集（点标题朗读）</h3>
+    <p style="color:var(--text-3);font-size:13px;margin-top:-6px">今天的句子排在最前面。可以点开任意一句反复跟读。</p>
+    <div id="quoteList"></div>
+  </div>
+</main>
+
+<footer class="footer">零基础英语学习站 · 学习进度保存在你的浏览器本地</footer>
+
+<script src="../data/quotes.js"></script>
+<script src="../data/vocab.js"></script>
+<script src="../js/app.js"></script>
+<script>
+(function () {
+  const A = window.App;
+  const quotes = window.QUOTES || [];
+  const offset = A.dayIndex();
+  const order = quotes.map((q, i) => ({ q, i: (offset + i) % quotes.length }));
+  const today = order[0] ? order[0].q : null;
+
+  const WEEK = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+  const d = new Date();
+  const dateStr = d.getFullYear() + " 年 " + (d.getMonth() + 1) + " 月 " + d.getDate() + " 日 · " + WEEK[d.getDay()];
+
+  function renderToday() {
+    if (!today) return;
+    document.getElementById("quoteBox").innerHTML = `
+      <div class="quote-card">
+        <div class="quote-date">TODAY · ${dateStr}</div>
+        <div class="quote-en" id="todayEn">${A.esc(today.en)}</div>
+        <div class="quote-cn">${A.esc(today.cn)}</div>
+        <div class="quote-words">
+          ${(today.words || []).map(w => `<span class="word-chip" data-say="${A.esc(w[0])}">${A.esc(w[0])} · ${A.esc(w[1])}</span>`).join("")}
+        </div>
+        <div class="quote-actions">
+          <button class="btn" id="playToday">🔊 朗读整句</button>
+          <button class="btn" id="playSlow">🐢 慢速朗读</button>
+          <button class="btn" id="readDone">✅ 我已经跟读过了</button>
+        </div>
+      </div>`;
+    document.getElementById("playToday").addEventListener("click", () => A.speak(today.en, { rate: 0.9 }));
+    document.getElementById("playSlow").addEventListener("click", () => A.speak(today.en, { rate: 0.6 }));
+    document.getElementById("readDone").addEventListener("click", () => {
+      const t = A.todayKey();
+      if (!A.state.quotesRead[t]) {
+        A.state.quotesRead[t] = 1;
+        A.save();
+        A.markActivity(1);
+        updateStats();
+        A.toast("太棒了！今天的跟读已完成 🎉");
+        document.getElementById("readDone").textContent = "✅ 今天已跟读";
+        document.getElementById("readDone").disabled = true;
+      }
+    });
+    if (A.state.quotesRead[A.todayKey()]) {
+      const b = document.getElementById("readDone");
+      b.textContent = "✅ 今天已跟读";
+      b.disabled = true;
+    }
+  }
+
+  function renderList() {
+    document.getElementById("quoteList").innerHTML = order.map((x, n) => `
+      <div class="quote-list-item">
+        <div class="quote-num">${n + 1}</div>
+        <div style="flex:1;min-width:0">
+          <div class="en" style="cursor:pointer" data-say="${A.esc(x.q.en)}">${A.esc(x.q.en)}</div>
+          <div class="cn">${A.esc(x.q.cn)}</div>
+        </div>
+        ${n === 0 ? '<span class="badge orange">今天</span>' : ""}
+        <button class="btn ghost sm" data-say="${A.esc(x.q.en)}">🔊</button>
+      </div>
+    `).join("");
+  }
+
+  function updateStats() {
+    document.getElementById("readDays").textContent = Object.keys(A.state.quotesRead || {}).length;
+    document.getElementById("totalQuotes").textContent = quotes.length;
+    document.getElementById("streakDays").textContent =
+      A.state.streak.last === A.todayKey() ? A.state.streak.days : 0;
+  }
+
+  renderToday();
+  renderList();
+  updateStats();
+
+  document.getElementById("quoteList").addEventListener("click", e => {
+    if (e.target.closest("[data-say]")) A.markActivity(1);
+  });
+})();
+</script>
+</body>
+</html>
