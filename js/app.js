@@ -89,30 +89,54 @@
   let voices = [];
   let enVoice = null;
   let voiceReady = false;
+  let pending = null;      // 等待语音列表加载后再播的请求
+  let unlockWarned = false;
+
+  function isEnglish(v) { return v && /^en/i.test(v.lang || ""); }
 
   function pickVoice() {
-    if (!("speechSynthesis" in window)) return;
-    voices = window.speechSynthesis.getVoices() || [];
-    // 优先选择美音/英音的英语语音
-    const pref = [
-      v => /en-US/i.test(v.lang) && /google|natural|samantha|aria|jenny|zira/i.test(v.name),
-      v => /en-GB/i.test(v.lang) && /google|natural|sonia|libby/i.test(v.name),
-      v => /^en[-_]US/i.test(v.lang),
-      v => /^en[-_]GB/i.test(v.lang),
-      v => /^en/i.test(v.lang)
-    ];
-    for (const f of pref) {
-      const hit = voices.find(f);
-      if (hit) { enVoice = hit; return; }
-    }
-    enVoice = null;
+    if (!("speechSynthesis" in window)) return false;
+    const list = window.speechSynthesis.getVoices() || [];
+    if (!list.length) return false;
+    voices = list;
+    voiceReady = true;
+    // 优先选择英文语音；用关键词打分，避免选到中文语音
+    const score = v => {
+      const n = (v.name || "").toLowerCase();
+      let s = 0;
+      if (/^en[-_]us/i.test(v.lang)) s += 40;
+      else if (/^en[-_]gb/i.test(v.lang)) s += 35;
+      else if (/^en/i.test(v.lang)) s += 30;
+      if (/natural|neural/.test(n)) s += 20;
+      if (/google/.test(n)) s += 15;
+      if (/samantha|aria|jenny|zira|george|guy|ava|allison|karen|daniel|serena/.test(n)) s += 10;
+      if (/^zh/i.test(v.lang)) s -= 100;   // 中文语音读英文会非常怪
+      if (!v.localService) s += 1;         // 在线语音通常更自然
+      return s;
+    };
+    const en = list.filter(isEnglish).sort((a, b) => score(b) - score(a));
+    enVoice = en[0] || null;
+    return !!enVoice;
+  }
+
+  function whenVoicesReady(cb) {
+    let tries = 15;   // 最多等 1.5 秒
+    const tick = () => {
+      if (pickVoice() || tries-- <= 0) { cb(); return; }
+      setTimeout(tick, 100);
+    };
+    tick();
   }
 
   if ("speechSynthesis" in window) {
     pickVoice();
-    if (typeof window.speechSynthesis.onvoiceschanged !== "undefined") {
-      window.speechSynthesis.onvoiceschanged = () => { pickVoice(); voiceReady = true; };
-    }
+    window.speechSynthesis.onvoiceschanged = () => { pickVoice(); };
+    // Chrome 首次 getVoices() 可能是空数组，需要再触发一次
+    setTimeout(pickVoice, 300);
+    // 离开页面时主动停止朗读，避免语音进程残留影响下一个页面
+    window.addEventListener("pagehide", () => {
+      try { window.speechSynthesis.cancel(); } catch (e) {}
+    });
   }
 
   function speak(text, opts) {
@@ -121,16 +145,37 @@
       toast("当前浏览器不支持语音朗读，建议用 Chrome / Edge");
       return;
     }
+    text = String(text == null ? "" : text).trim();
+    if (!text) return;
     opts = opts || {};
+
+    // 语音列表还没加载好时，等一下就绪再播；但没有英文语音也不阻塞朗读
+    if (!voiceReady && !pending) {
+      pending = { text, opts };
+      whenVoicesReady(() => {
+        const p = pending;
+        pending = null;
+        if (p) speak(p.text, p.opts);
+      });
+      return;
+    }
+
     try {
       window.speechSynthesis.cancel();
-      if (!enVoice && voices.length === 0) pickVoice();
       const u = new SpeechSynthesisUtterance(text);
-      if (enVoice) u.voice = enVoice;
-      u.lang = (enVoice && enVoice.lang) || "en-US";
-      u.rate = opts.rate || 0.85;
+      if (enVoice) {
+        u.voice = enVoice;
+        u.lang = enVoice.lang || "en-US";
+      } else {
+        // 设备没有英文语音时，仍然尝试用默认语音朗读
+        u.lang = "en-US";
+      }
+      u.rate = Math.max(0.5, Math.min(2, opts.rate || 0.85));
       u.pitch = 1;
+      u.volume = 1;
       window.speechSynthesis.speak(u);
+      // 某些浏览器需要一次 resume 才会真正发声
+      if (window.speechSynthesis.paused) window.speechSynthesis.resume();
     } catch (e) {
       console.warn("语音朗读失败：", e);
       toast("语音朗读失败，请检查浏览器的语音设置");
@@ -219,13 +264,20 @@
       const cur = path.split("/").pop();
       if (href && href === cur) a.classList.add("active");
     });
-    // 所有带 data-say 的元素自动播报
-    // 注意：只处理 <a>，按钮交给各页面自己的逻辑，避免重复朗读或干扰页面行为
+    // 所有带 data-say 的元素自动播报（词卡、例句、读音按钮等）
+    // 页面自己的按钮若已在内部调用 speak，这里用“短时间内同一内容不重复播”来去重
+    let lastSay = { text: "", at: 0 };
     document.addEventListener("click", e => {
-      const link = e.target.closest("a[data-say]");
-      if (!link) return;
-      const text = link.getAttribute("data-say");
-      if (text) { e.preventDefault(); speak(text); }
+      const el = e.target.closest("[data-say]");
+      if (!el) return;
+      const text = el.getAttribute("data-say");
+      if (!text) return;
+      const now = Date.now();
+      if (lastSay.text === text && now - lastSay.at < 300) return;  // 同一事件被多处处理，跳过重复
+      lastSay = { text, at: now };
+      // 纯朗读元素（span/div/词卡）不需要阻止默认行为；<a> 需要
+      if (el.tagName === "A") e.preventDefault();
+      speak(text);
     });
   }
 
