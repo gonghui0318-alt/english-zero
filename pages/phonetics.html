@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>音标 · 零基础英语</title>
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="logo" href="../index.html">
+      <span class="logo-badge">Aa</span>
+      <span>零基础英语<small>从字母到开口说</small></span>
+    </a>
+    <nav class="nav">
+      <a href="../index.html">首页</a>
+      <a href="lessons.html">课程</a>
+      <a href="letters.html">字母表</a>
+      <a href="phonetics.html">音标</a>
+      <a href="vocabulary.html">词汇</a>
+      <a href="grammar.html">语法</a>
+      <a href="flashcards.html">单词卡</a>
+      <a href="quiz.html">测验</a>
+      <a href="daily.html">每日一句</a>
+      <a href="progress.html">我的进度</a>
+    </nav>
+    <span class="streak-pill">🔥 连续学习 <span>0</span> 天</span>
+    <button class="speak-toggle">🔊 语音开</button>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page-head">
+    <h1>🎧 48 个国际音标</h1>
+    <p>音标就像拼音，学会了就能“看词读音”。点击例词可以听发音，边听边跟着读出声。</p>
+  </div>
+
+  <div class="tip-box" style="margin-bottom:24px">
+    <b>怎么用这一页：</b>先看音标的描述了解嘴型 → 点例词听发音 → 对着镜子跟着读 5 遍。<b>不要追求一次全记住</b>，每天学 3–5 个就好。
+  </div>
+
+  <div id="phoneticList"></div>
+</main>
+
+<footer class="footer">零基础英语学习站 · 学习进度保存在你的浏览器本地</footer>
+
+<script src="../data/alphabet.js"></script>
+<script src="../data/vocab.js"></script>
+<script src="../js/app.js"></script>
+<script>
+(function () {
+  const A = window.App;
+  const groups = window.PHONETICS || [];
+
+  document.getElementById("phoneticList").innerHTML = groups.map(g => `
+    <section class="card phonetic-group">
+      <h3><span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--c-primary);display:inline-block"></span>
+        ${A.esc(g.group)}
+        <span class="badge gray">${g.items.length} 个</span>
+      </h3>
+      ${g.tip ? `<div class="tip-box" style="margin:0 0 14px">${g.tip}</div>` : ""}
+      <div class="phonetic-list">
+        ${g.items.map(it => `
+          <div class="ph-item">
+            <div class="ph-symbol">/${A.esc(it.symbol)}/</div>
+            <div class="ph-desc"><b>${A.esc(it.desc)}</b></div>
+            <div class="ph-words">
+              ${it.words.map(w => `<span class="word-chip" data-say="${A.esc(w)}" title="点击朗读">🔊 ${A.esc(w)}</span>`).join("")}
+            </div>
+          </div>`).join("")}
+      </div>
+    </section>
+  `).join("");
+
+  // 点击例词：朗读并记录一次活动
+  document.getElementById("phoneticList").addEventListener("click", e => {
+    if (e.target.closest("[data-say]")) A.markActivity(1);
+  });
+})();
+</script>
+</body>
+</html>
