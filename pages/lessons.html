@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>分步课程 · 零基础英语</title>
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="logo" href="../index.html">
+      <span class="logo-badge">Aa</span>
+      <span>零基础英语<small>从字母到开口说</small></span>
+    </a>
+    <nav class="nav">
+      <a href="../index.html">首页</a>
+      <a href="lessons.html">课程</a>
+      <a href="letters.html">字母表</a>
+      <a href="phonetics.html">音标</a>
+      <a href="vocabulary.html">词汇</a>
+      <a href="grammar.html">语法</a>
+      <a href="flashcards.html">单词卡</a>
+      <a href="quiz.html">测验</a>
+      <a href="daily.html">每日一句</a>
+      <a href="progress.html">我的进度</a>
+    </nav>
+    <span class="streak-pill">🔥 连续学习 <span>0</span> 天</span>
+    <button class="speak-toggle">🔊 语音开</button>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page-head">
+    <h1>📚 分步课程</h1>
+    <p>12 节课，从认识字母开始，一步步走到能开口说英语。建议按顺序学，每节课约 15–20 分钟。</p>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:14px;font-weight:600">
+      <span>总进度</span>
+      <span id="lessonPct" style="color:var(--c-primary)">0%</span>
+    </div>
+    <div class="progress"><i id="lessonBar"></i></div>
+    <div style="font-size:13px;color:var(--text-3);margin-top:8px" id="lessonCount">已完成 0 / 12 节</div>
+  </div>
+
+  <div class="lesson-list" id="lessonList"></div>
+
+  <div class="tip-box" style="margin-top:24px">
+    <b>学习建议：</b>每节课先看讲解，再做课后练习。做完练习就勾选“标记为已学完”，下次打开网站会自动接着上次的课程。
+  </div>
+</main>
+
+<footer class="footer">零基础英语学习站 · 学习进度保存在你的浏览器本地</footer>
+
+<script src="../data/lessons.js"></script>
+<script src="../data/vocab.js"></script>
+<script src="../data/alphabet.js"></script>
+<script src="../js/app.js"></script>
+<script>
+(function () {
+  const A = window.App;
+  const list = window.LESSONS || [];
+  const lp = A.lessonProgress();
+
+  document.getElementById("lessonPct").textContent = lp.pct + "%";
+  document.getElementById("lessonBar").style.width = lp.pct + "%";
+  document.getElementById("lessonCount").textContent = "已完成 " + lp.done + " / " + lp.total + " 节";
+
+  // 顺序解锁：第 1 课永远解锁；上一课完成则解锁下一课
+  const html = list.map((l, i) => {
+    const st = A.state.lessons[l.id] || {};
+    const prev = i === 0 ? null : list[i - 1];
+    const prevDone = !prev || (A.state.lessons[prev.id] && A.state.lessons[prev.id].done);
+    const locked = !prevDone && !st.done;
+    const cls = "lesson-item" + (st.done ? " done" : "") + (locked ? " locked" : "");
+    const badge = st.done
+      ? '<span class="badge green">✓ 已学完</span>'
+      : locked
+        ? '<span class="badge gray">🔒 需先完成上一课</span>'
+        : '<span class="badge">可以学习</span>';
+    const score = st.quizTotal
+      ? '<span class="badge purple">练习 ' + st.quizScore + "/" + st.quizTotal + "</span>"
+      : "";
+    return '<div class="' + cls + '" data-id="' + l.id + '">' +
+      '<div class="lesson-idx">' + (st.done ? "✓" : l.id) + '</div>' +
+      '<div class="lesson-main">' +
+        '<h3>' + A.esc(l.title) + '</h3>' +
+        '<p>' + A.esc(l.subtitle) + ' · 约 ' + l.minutes + ' 分钟</p>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;align-items:center">' + score + badge + '</div>' +
+    '</div>';
+  }).join("");
+
+  document.getElementById("lessonList").innerHTML = html;
+
+  document.getElementById("lessonList").addEventListener("click", e => {
+    const item = e.target.closest(".lesson-item");
+    if (!item) return;
+    if (item.classList.contains("locked")) {
+      A.toast("先完成上一节课，就可以解锁啦");
+      return;
+    }
+    location.href = "lesson.html?id=" + item.dataset.id;
+  });
+})();
+</script>
+</body>
+</html>
