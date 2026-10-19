@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>基础语法 · 零基础英语</title>
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="logo" href="../index.html">
+      <span class="logo-badge">Aa</span>
+      <span>零基础英语<small>从字母到开口说</small></span>
+    </a>
+    <nav class="nav">
+      <a href="../index.html">首页</a>
+      <a href="lessons.html">课程</a>
+      <a href="letters.html">字母表</a>
+      <a href="phonetics.html">音标</a>
+      <a href="vocabulary.html">词汇</a>
+      <a href="grammar.html">语法</a>
+      <a href="flashcards.html">单词卡</a>
+      <a href="quiz.html">测验</a>
+      <a href="daily.html">每日一句</a>
+      <a href="progress.html">我的进度</a>
+    </nav>
+    <span class="streak-pill">🔥 连续学习 <span>0</span> 天</span>
+    <button class="speak-toggle">🔊 语音开</button>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page-head">
+    <h1>🧩 基础语法</h1>
+    <p>只讲最核心、最常用的 5 个语法点。每个点都配了例句表格，看一遍、读一遍就懂了。</p>
+  </div>
+
+  <div class="toolbar" id="grammarNav" style="position:sticky;top:64px;z-index:20;background:var(--bg);padding:10px 0"></div>
+
+  <div id="grammarList" style="display:flex;flex-direction:column;gap:20px"></div>
+</main>
+
+<footer class="footer">零基础英语学习站 · 学习进度保存在你的浏览器本地</footer>
+
+<script src="../data/grammar.js"></script>
+<script src="../js/app.js"></script>
+<script>
+(function () {
+  const A = window.App;
+  const list = window.GRAMMAR || [];
+
+  document.getElementById("grammarNav").innerHTML = list.map((g, i) =>
+    '<a class="chip" href="#' + g.id + '">' + (i + 1) + '. ' + A.esc(g.title.split("：")[0]) + '</a>'
+  ).join("") + '<a class="chip" href="quiz.html" style="border-color:var(--c-primary);color:var(--c-primary)">✍️ 去测验</a>';
+
+  document.getElementById("grammarList").innerHTML = list.map((g, i) => `
+    <section class="card" id="${g.id}" style="scroll-margin-top:130px">
+      <h2 style="margin:0 0 10px;font-size:19px;display:flex;align-items:center;gap:10px">
+        <span style="width:30px;height:30px;border-radius:9px;background:var(--c-primary-soft);color:var(--c-primary);
+                     display:grid;place-items:center;font-family:var(--font-en);font-size:14px;flex-shrink:0">${i + 1}</span>
+        ${A.esc(g.title)}
+      </h2>
+      <p style="color:var(--text-2);font-size:15px">${g.intro}</p>
+      ${g.table ? `
+        <div class="table-wrap" style="margin:14px 0">
+          <table class="data">
+            <thead><tr>${g.table.head.map(h => "<th>" + A.esc(h) + "</th>").join("")}</tr></thead>
+            <tbody>${g.table.rows.map(r => "<tr>" + r.map((c, j) =>
+              "<td" + (j === 0 ? ' style="font-weight:600"' : "") + ">" + A.esc(c) + "</td>"
+            ).join("") + "</tr>").join("")}</tbody>
+          </table>
+        </div>` : ""}
+      ${(g.examples || []).map(x => `
+        <div class="example-box">
+          <span class="en">${A.esc(x.en)}</span>
+          <span class="cn">${A.esc(x.cn)}</span>
+          <button class="btn ghost sm" data-say="${A.esc(x.en)}" style="margin-left:auto">🔊</button>
+        </div>`).join("")}
+      ${g.tip ? `<div class="tip-box"><b>小提示：</b>${g.tip}</div>` : ""}
+    </section>
+  `).join("");
+
+  document.getElementById("grammarList").addEventListener("click", e => {
+    if (e.target.closest("[data-say]")) A.markActivity(1);
+  });
+})();
+</script>
+</body>
+</html>
