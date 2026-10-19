@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>单词卡 · 零基础英语</title>
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="logo" href="../index.html">
+      <span class="logo-badge">Aa</span>
+      <span>零基础英语<small>从字母到开口说</small></span>
+    </a>
+    <nav class="nav">
+      <a href="../index.html">首页</a>
+      <a href="lessons.html">课程</a>
+      <a href="letters.html">字母表</a>
+      <a href="phonetics.html">音标</a>
+      <a href="vocabulary.html">词汇</a>
+      <a href="grammar.html">语法</a>
+      <a href="flashcards.html">单词卡</a>
+      <a href="quiz.html">测验</a>
+      <a href="daily.html">每日一句</a>
+      <a href="progress.html">我的进度</a>
+    </nav>
+    <span class="streak-pill">🔥 连续学习 <span>0</span> 天</span>
+    <button class="speak-toggle">🔊 语音开</button>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page-head">
+    <h1>🃏 单词卡</h1>
+    <p>先看英文，在心里读一遍，再点卡片翻面看意思。选“认识”或“不认识”，系统会自动安排下次复习。</p>
+  </div>
+
+  <div class="toolbar" style="justify-content:center;margin-bottom:14px" id="modeBar">
+    <button class="chip active" data-mode="smart">🎯 智能复习 <span id="dueCount"></span></button>
+    <button class="chip" data-mode="new">✨ 只学新词</button>
+    <button class="chip" data-mode="all">📚 全部单词</button>
+    <button class="chip" data-mode="wrong">❗ 易错词</button>
+  </div>
+
+  <div class="flash-wrap">
+    <div class="flash-counter" id="counter">— / —</div>
+    <div class="progress" style="margin-bottom:14px"><i id="flashBar"></i></div>
+
+    <div class="flash-card" id="card">
+      <div class="flash-face front" id="faceFront">
+        <div class="flash-word" id="fw">Ready?</div>
+        <div class="flash-phonetic" id="fph"></div>
+        <button class="speak-big" id="speakBtn" title="朗读">🔊</button>
+        <div class="flash-hint">点击卡片翻面查看意思</div>
+      </div>
+      <div class="flash-face back">
+        <div class="flash-meaning" id="fm"></div>
+        <div class="flash-phonetic" id="fph2"></div>
+        <div class="flash-example" id="fe"></div>
+        <div class="flash-example-cn" id="fec"></div>
+        <div class="flash-hint">你认识这个单词吗？</div>
+      </div>
+    </div>
+
+    <div class="flash-controls" id="controls">
+      <button class="btn red" id="btnNo">😵 不认识</button>
+      <button class="btn ghost" id="btnFlip">🔄 翻面</button>
+      <button class="btn green" id="btnYes">😄 认识</button>
+    </div>
+
+    <div class="flash-controls" id="startBox">
+      <button class="btn lg" id="btnStart">开始背单词</button>
+    </div>
+
+    <div id="doneBox" style="display:none">
+      <div class="card result-card" style="margin-top:18px">
+        <div class="result-ring" id="doneRing"><span id="donePct">0%</span></div>
+        <h2>这一轮完成啦！🎉</h2>
+        <p id="doneText"></p>
+        <div class="result-actions">
+          <button class="btn" id="againBtn">再来一轮</button>
+          <a class="btn ghost" href="quiz.html">去做测验 →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-3" style="margin-top:34px">
+    <div class="card"><div class="stat" style="border:none;box-shadow:none;padding:0"><div class="num" id="sNew" style="color:var(--c-primary)">0</div><div class="lbl">还没学过的新词</div></div></div>
+    <div class="card"><div class="stat" style="border:none;box-shadow:none;padding:0"><div class="num" id="sLearn" style="color:var(--c-accent)">0</div><div class="lbl">学习中</div></div></div>
+    <div class="card"><div class="stat" style="border:none;box-shadow:none;padding:0"><div class="num" id="sMaster" style="color:var(--c-green)">0</div><div class="lbl">已掌握</div></div></div>
+  </div>
+</main>
+
+<footer class="footer">零基础英语学习站 · 学习进度保存在你的浏览器本地</footer>
+
+<script src="../data/vocab.js"></script>
+<script src="../js/app.js"></script>
+<script>
+(function () {
+  const A = window.App;
+  const HOUR = 3600 * 1000;
+
+  // 去重
+  const seen = {};
+  const VOCAB = (window.VOCAB || []).filter(v => { if (seen[v.w]) return false; seen[v.w] = true; return true; });
+
+  let mode = "smart";
+  let deck = [];
+  let pos = 0;
+  let stats = { yes: 0, no: 0 };
+  let started = false;
+
+  /* ---------- 复习调度：简单版“间隔重复” ---------- */
+  function ensure(w) {
+    if (!A.state.words[w]) A.state.words[w] = { lv: 0, seen: 0, right: 0, wrong: 0, last: null, due: 0 };
+    if (A.state.words[w].due == null) A.state.words[w].due = 0;
+    return A.state.words[w];
+  }
+
+  function dueList(now) {
+    return VOCAB.filter(v => {
+      const s = A.state.words[v.w];
+      return s && s.lv >= 1 && s.lv < 2 && (s.due || 0) <= now;
+    });
+  }
+
+  function buildDeck() {
+    const now = Date.now();
+    let list = [];
+    if (mode === "smart") {
+      // 到期复习的旧词 + 新词（每次 10 个）
+      const due = A.shuffle(dueList(now)).slice(0, 15);
+      const fresh = A.shuffle(VOCAB.filter(v => !A.state.words[v.w] || A.state.words[v.w].lv === 0)).slice(0, 10);
+      list = due.concat(fresh);
+      if (!list.length) list = A.shuffle(VOCAB).slice(0, 10); // 全掌握了就随便复习
+    } else if (mode === "new") {
+      list = A.shuffle(VOCAB.filter(v => !A.state.words[v.w] || A.state.words[v.w].lv === 0)).slice(0, 15);
+      if (!list.length) list = A.sample(VOCAB, 10);
+    } else if (mode === "wrong") {
+      list = VOCAB.filter(v => { const s = A.state.words[v.w]; return s && (s.wrong || 0) > (s.right || 0) && s.lv < 2; });
+      list = A.shuffle(list).slice(0, 20);
+      if (!list.length) list = A.sample(VOCAB, 10);
+    } else {
+      list = A.shuffle(VOCAB).slice(0, 20);
+    }
+    deck = list;
+    pos = 0;
+    stats = { yes: 0, no: 0 };
+    started = true;
+  }
+
+  /* ---------- 渲染 ---------- */
+  const cardEl = document.getElementById("card");
+
+  function renderCard() {
+    const v = deck[pos];
+    if (!v) return done();
+    cardEl.classList.remove("flipped");
+    document.getElementById("fw").textContent = v.w;
+    document.getElementById("fph").textContent = v.ph;
+    document.getElementById("fm").textContent = v.m + "  " + v.p;
+    document.getElementById("fph2").textContent = v.w + "  " + v.ph;
+    document.getElementById("fe").textContent = v.e;
+    document.getElementById("fec").textContent = v.ec;
+    document.getElementById("counter").innerHTML =
+      '<b>' + (pos + 1) + '</b> / ' + deck.length +
+      '　<span style="font-size:13px;color:var(--text-3)">✅ ' + stats.yes + '　❌ ' + stats.no + '</span>';
+    document.getElementById("flashBar").style.width = (pos / deck.length * 100) + "%";
+    // 新卡自动朗读
+    setTimeout(() => A.speak(v.w), 120);
+  }
+
+  function summary() {
+    const words = VOCAB.map(v => A.state.words[v.w]).filter(Boolean);
+    document.getElementById("sNew").textContent = VOCAB.filter(v => !A.state.words[v.w] || A.state.words[v.w].lv === 0).length;
+    document.getElementById("sLearn").textContent = words.filter(s => s.lv === 1).length;
+    document.getElementById("sMaster").textContent = words.filter(s => s.lv >= 2).length;
+    document.getElementById("dueCount").textContent = dueList(Date.now()).length ? "(" + dueList(Date.now()).length + ")" : "";
+  }
+
+  function showStart() {
+    document.getElementById("startBox").style.display = "flex";
+    document.getElementById("controls").style.display = "none";
+  }
+  function showControls() {
+    document.getElementById("startBox").style.display = "none";
+    document.getElementById("controls").style.display = "flex";
+  }
+
+  function done() {
+    document.getElementById("controls").style.display = "none";
+    document.getElementById("doneBox").style.display = "block";
+    document.querySelector(".flash-card").style.display = "none";
+    document.getElementById("counter").textContent = "";
+    document.getElementById("flashBar").style.width = "100%";
+    const total = stats.yes + stats.no;
+    const pct = total ? Math.round(stats.yes / total * 100) : 0;
+    document.getElementById("donePct").textContent = pct + "%";
+    document.getElementById("doneRing").style.setProperty("--pct", pct + "%");
+    document.getElementById("doneText").textContent =
+      "本轮共 " + total + " 个单词，认识 " + stats.yes + " 个，不认识 " + stats.no + " 个。不认识的词会更快再出现，记得回来复习。";
+    summary();
+  }
+
+  function answer(known) {
+    const v = deck[pos];
+    const s = ensure(v.w);
+    s.seen = (s.seen || 0) + 1;
+    s.last = Date.now();
+    if (known) {
+      s.right = (s.right || 0) + 1;
+      stats.yes++;
+      // 认识的间隔逐次拉长：第 1 次认识 4 小时，第二次直接算掌握
+      if (s.lv >= 1 || s.right >= 2) {
+        s.lv = 2;
+        s.due = Date.now() + 24 * HOUR;
+      } else {
+        s.lv = 1;
+        s.due = Date.now() + 4 * HOUR;
+      }
+    } else {
+      s.wrong = (s.wrong || 0) + 1;
+      stats.no++;
+      s.lv = s.lv >= 2 ? 1 : 1;
+      s.due = Date.now() + 10 * 60 * 1000; // 10 分钟后再出现
+    }
+    A.save();
+    A.markActivity(1);
+    pos++;
+    summary();
+    if (pos >= deck.length) done();
+    else renderCard();
+  }
+
+  /* ---------- 事件 ---------- */
+  cardEl.addEventListener("click", e => {
+    if (e.target.closest("#speakBtn")) return;
+    cardEl.classList.toggle("flipped");
+  });
+  document.getElementById("speakBtn").addEventListener("click", e => {
+    e.stopPropagation();
+    A.speak(deck[pos] ? deck[pos].w : "hello");
+  });
+  document.getElementById("btnFlip").addEventListener("click", () => cardEl.classList.toggle("flipped"));
+  document.getElementById("btnYes").addEventListener("click", () => answer(true));
+  document.getElementById("btnNo").addEventListener("click", () => answer(false));
+
+  document.getElementById("btnStart").addEventListener("click", () => {
+    document.getElementById("doneBox").style.display = "none";
+    document.querySelector(".flash-card").style.display = "block";
+    start();
+  });
+  document.getElementById("againBtn").addEventListener("click", () => {
+    document.getElementById("doneBox").style.display = "none";
+    document.querySelector(".flash-card").style.display = "block";
+    start();
+  });
+
+  document.getElementById("modeBar").addEventListener("click", e => {
+    const chip = e.target.closest(".chip");
+    if (!chip) return;
+    document.querySelectorAll("#modeBar .chip").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    mode = chip.dataset.mode;
+    if (started) {
+      document.getElementById("doneBox").style.display = "none";
+      document.querySelector(".flash-card").style.display = "block";
+      start();
+    }
+  });
+
+  // 键盘：空格翻面，← 不认识，→ 认识
+  document.addEventListener("keydown", e => {
+    if (!started || pos >= deck.length) return;
+    if (e.code === "Space") { e.preventDefault(); cardEl.classList.toggle("flipped"); }
+    if (e.key === "ArrowRight") answer(true);
+    if (e.key === "ArrowLeft") answer(false);
+  });
+
+  function start() {
+    buildDeck();
+    showControls();
+    if (!deck.length) { done(); return; }
+    renderCard();
+  }
+
+  // 初始
+  summary();
+  showStart();
+  document.getElementById("counter").textContent = "准备好了吗？";
+  document.getElementById("fw").textContent = "Hello!";
+  document.getElementById("fph").textContent = "/həˈləʊ/";
+  document.getElementById("fm").textContent = "你好";
+  document.getElementById("fph2").textContent = "hello /həˈləʊ/";
+  document.getElementById("fe").textContent = "Hello, how are you?";
+  document.getElementById("fec").textContent = "你好，你好吗？";
+})();
+</script>
+</body>
+</html>
