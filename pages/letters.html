@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>字母表 · 零基础英语</title>
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="logo" href="../index.html">
+      <span class="logo-badge">Aa</span>
+      <span>零基础英语<small>从字母到开口说</small></span>
+    </a>
+    <nav class="nav">
+      <a href="../index.html">首页</a>
+      <a href="lessons.html">课程</a>
+      <a href="letters.html">字母表</a>
+      <a href="phonetics.html">音标</a>
+      <a href="vocabulary.html">词汇</a>
+      <a href="grammar.html">语法</a>
+      <a href="flashcards.html">单词卡</a>
+      <a href="quiz.html">测验</a>
+      <a href="daily.html">每日一句</a>
+      <a href="progress.html">我的进度</a>
+    </nav>
+    <span class="streak-pill">🔥 连续学习 <span>0</span> 天</span>
+    <button class="speak-toggle">🔊 语音开</button>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page-head">
+    <h1>🔤 字母表</h1>
+    <p>点击任意字母即可听到它的读音，下面的小字是例词。点过的字母会变绿——试着把 26 个字母都点亮吧。</p>
+  </div>
+
+  <div class="card" style="margin-bottom:22px;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+    <div style="flex:1;min-width:200px">
+      <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:600;margin-bottom:8px">
+        <span>跟读进度</span>
+        <span id="letterPct" style="color:var(--c-green)">0 / 26</span>
+      </div>
+      <div class="progress green"><i id="letterBar"></i></div>
+    </div>
+    <button class="btn" id="playAll">▶ 全部朗读一遍</button>
+    <button class="btn ghost" id="resetLetters">重置</button>
+  </div>
+
+  <div class="card">
+    <h3 class="card-title">🔠 26 个字母（点一下听读音）</h3>
+    <div class="letter-grid" id="letterGrid"></div>
+  </div>
+
+  <div class="grid grid-2" style="margin-top:22px">
+    <div class="card">
+      <h3 class="card-title">💡 元音字母的两种读法</h3>
+      <p style="color:var(--text-2);font-size:14px;margin-top:0">同一个元音字母，在不同单词里读音可能完全不同。先感受一下区别：</p>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>字母</th><th>短读</th><th>例词</th><th>长读</th><th>例词</th></tr></thead>
+          <tbody id="vowelRules"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <h3 class="card-title">🧠 记忆小贴士</h3>
+      <ul style="margin:0;padding-left:20px;color:var(--text-2);font-size:14.5px;line-height:2">
+        <li>字母分 <strong>大写 A–Z</strong> 和 <strong>小写 a–z</strong>，两种都要会写。</li>
+        <li>元音字母只有 <strong>5 个：A E I O U</strong>，其余是辅音字母。</li>
+        <li>把字母按 <strong>A-B-C</strong> 的顺序唱成歌，最容易记住。</li>
+        <li>练写法时在格子里练，注意小写字母 <strong>b / d</strong> 不要写反。</li>
+        <li>每天大声读一遍 26 个字母，一周就能脱口而出。</li>
+      </ul>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">零基础英语学习站 · 学习进度保存在你的浏览器本地</footer>
+
+<script src="../data/alphabet.js"></script>
+<script src="../data/vocab.js"></script>
+<script src="../js/app.js"></script>
+<script>
+(function () {
+  const A = window.App;
+  const letters = window.LETTERS || [];
+  const grid = document.getElementById("letterGrid");
+
+  function renderProgress() {
+    const lp = A.letterProgress();
+    document.getElementById("letterPct").textContent = lp.done + " / " + lp.total;
+    document.getElementById("letterBar").style.width = lp.pct + "%";
+  }
+
+  grid.innerHTML = letters.map(L =>
+    '<button class="letter-cell' + (A.state.letters[L.u] ? " done" : "") + '" data-letter="' + L.u + '" data-word="' + L.word + '" title="' + L.word + ' ' + L.cn + '">' +
+      '<span class="u">' + L.u + '</span>' +
+      '<span class="l">' + L.l + '</span>' +
+      '<span class="w">' + L.word + '</span>' +
+    '</button>'
+  ).join("");
+
+  // 元音规则表
+  document.getElementById("vowelRules").innerHTML = (window.VOWEL_RULES || []).map(r =>
+    '<tr>' +
+      '<td class="en-cell" style="font-weight:800">' + r.letter + '</td>' +
+      '<td class="en-cell" style="color:var(--c-primary)">/' + r.short + '/</td>' +
+      '<td><span class="word-chip" data-say="' + r.shortWord + '">' + r.shortWord + '</span></td>' +
+      '<td class="en-cell" style="color:var(--c-accent)">/' + r.long + '/</td>' +
+      '<td><span class="word-chip" data-say="' + r.longWord + '">' + r.longWord + '</span></td>' +
+    '</tr>'
+  ).join("");
+
+  grid.addEventListener("click", e => {
+    const cell = e.target.closest(".letter-cell");
+    if (!cell) return;
+    const u = cell.dataset.letter;
+    const w = cell.dataset.word;
+    // 先读字母名，再读例词
+    A.speak(u + ". " + u + ". " + w);
+    if (!A.state.letters[u]) {
+      A.state.letters[u] = 1;
+      A.save();
+      A.markActivity(1);
+      cell.classList.add("done");
+      renderProgress();
+      if (A.letterProgress().done === letters.length) {
+        setTimeout(() => A.toast("🎉 26 个字母全部跟读完成！"), 1200);
+      }
+    }
+  });
+
+  // 全部朗读
+  document.getElementById("playAll").addEventListener("click", () => {
+    if (!A.state.speak) { A.toast("朗读已关闭，点击右上角按钮打开"); return; }
+    if (!("speechSynthesis" in window)) { A.toast("当前浏览器不支持语音朗读"); return; }
+    window.speechSynthesis.cancel();
+    const names = letters.map(l => l.u).join(", ");
+    const u = new SpeechSynthesisUtterance(names);
+    u.lang = "en-US";
+    u.rate = 0.7;
+    window.speechSynthesis.speak(u);
+    A.toast("正在朗读 A–Z…");
+  });
+
+  document.getElementById("resetLetters").addEventListener("click", () => {
+    A.state.letters = {};
+    A.save();
+    document.querySelectorAll(".letter-cell").forEach(c => c.classList.remove("done"));
+    renderProgress();
+    A.toast("字母进度已重置");
+  });
+
+  renderProgress();
+})();
+</script>
+</body>
+</html>
